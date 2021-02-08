@@ -3,13 +3,26 @@ package main
 import (
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
 func main() {
-	session, err := discordgo.New("Bot " + "TOKEN")
+	token := os.Getenv("TOKEN")
+
+	if token == "" {
+		log.Fatal("$TOKEN must be set")
+	}
+
+	guildId := os.Getenv("GUILD_ID")
+
+	if guildId == "" {
+		log.Fatal("GUILD_ID must be set")
+	}
+
+	session, err := discordgo.New("Bot " + token)
 	if err != nil {
 		fmt.Println("error creating Discord session,", err)
 		return
@@ -25,7 +38,7 @@ func main() {
 		return
 	}
 
-	channels, err := session.GuildChannels("GUILD ID")
+	channels, err := session.GuildChannels(guildId)
 	for _, ch := range channels {
 		fmt.Println((*ch).ID)
 		fmt.Println((*ch).Name)
