@@ -14,34 +14,39 @@ func main() {
 
 	if token == "" {
 		log.Fatal("$TOKEN must be set")
+		return
 	}
 
 	guildId := os.Getenv("GUILD_ID")
 
 	if guildId == "" {
-		log.Fatal("GUILD_ID must be set")
+		log.Fatal("$GUILD_ID must be set")
+		return
+	}
+
+	channelId := os.Getenv("CHANNEL_ID")
+
+	if channelId == "" {
+		log.Fatal("$CHANNEL_ID must be set")
+		return
 	}
 
 	session, err := discordgo.New("Bot " + token)
 	if err != nil {
-		fmt.Println("error creating Discord session,", err)
+		log.Fatal("error creating Discord session,", err)
 		return
 	}
 
-	session.AddHandler(messageCreate)
+	session.AddHandler(messageCreate())
 
-	session.Identify.Intents = discordgo.IntentsGuildMessages
+	session.AddHandler(voiceStateUpdate(channelId))
+
+	session.Identify.Intents = discordgo.MakeIntent(discordgo.IntentsGuildMessages | discordgo.IntentsGuildVoiceStates)
 
 	err = session.Open()
 	if err != nil {
-		fmt.Println("error opening connection,", err)
+		log.Fatal("error opening connection,", err)
 		return
-	}
-
-	channels, err := session.GuildChannels(guildId)
-	for _, ch := range channels {
-		fmt.Println((*ch).ID)
-		fmt.Println((*ch).Name)
 	}
 
 	// Wait here until CTRL-C or other term signal is received.
@@ -54,13 +59,46 @@ func main() {
 	session.Close()
 }
 
-func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+func messageCreate() func(s *discordgo.Session, m *discordgo.MessageCreate) {
+	return func(s *discordgo.Session, m *discordgo.MessageCreate) {
+		if m.Author.ID == s.State.User.ID {
+			return
+		}
 
-	if m.Author.ID == s.State.User.ID {
-		return
+		if m.Content == "/test" {
+			s.ChannelMessageSend(m.ChannelID, "シロもなかなかイケるな。しんのすけ、泣いてないで食え。")
+		}
+
+		if m.Content == "/osaka" {
+			s.ChannelMessageSend(m.ChannelID, "テーマパークに来たみたいだぜ。テンション上がるなぁ～")
+		}
 	}
-	// If the message is "ping" reply with "Pong!"
-	if m.Content == "/test" {
-		s.ChannelMessageSend(m.ChannelID, "シロもなかなかイケるな。しんのすけ、泣いてないで食え。")
+}
+
+func voiceStateUpdate(channelId string) func(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
+	return func(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
+		user, err := s.User(m.UserID)
+		if err != nil {
+			return
+		}
+
+		before := m.BeforeUpdate.ChannelID
+		after := m.VoiceState.ChannelID
+
+		if before == "" && after != "" {
+			channel, err := s.Channel(after)
+			if err != nil {
+				return
+			}
+			fmt.Println(user.Username, channel.Name)
+		}
+
+		if before != "" && after != "" {
+			channel, err := s.Channel(before)
+			if err != nil {
+				return
+			}
+			fmt.Println(user.Username, channel.Name)
+		}
 	}
 }
