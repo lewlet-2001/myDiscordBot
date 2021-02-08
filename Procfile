@@ -1,1 +1,1 @@
-bot: ./myDiscordBot
+bot: ./bin/myDiscordBot
