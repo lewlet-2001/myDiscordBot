@@ -75,30 +75,32 @@ func messageCreate() func(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func voiceStateUpdate(channelId string) func(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
-	return func(s *discordgo.Session, m *discordgo.VoiceStateUpdate) {
-		user, err := s.User(m.UserID)
+func voiceStateUpdate(channelId string) func(s *discordgo.Session, u *discordgo.VoiceStateUpdate) {
+	return func(s *discordgo.Session, u *discordgo.VoiceStateUpdate) {
+		user, err := s.User(u.UserID)
 		if err != nil {
 			return
 		}
 
-		before := m.BeforeUpdate.ChannelID
-		after := m.VoiceState.ChannelID
+		before := u.BeforeUpdate
+		after := u.VoiceState
 
-		if before == "" && after != "" {
-			channel, err := s.Channel(after)
+		if before == nil && after != nil {
+			channel, err := s.Channel(after.ChannelID)
 			if err != nil {
 				return
 			}
-			fmt.Println(user.Username, channel.Name)
+			str := fmt.Sprintf("%sがボイスチャンネル「%s」に参加したゾ！", user.Username, channel.Name)
+			s.ChannelMessageSend(channelId, str)
 		}
 
-		if before != "" && after != "" {
-			channel, err := s.Channel(before)
+		if before != nil && after != nil {
+			channel, err := s.Channel(before.ChannelID)
 			if err != nil {
 				return
 			}
-			fmt.Println(user.Username, channel.Name)
+			str := fmt.Sprintf("%sがボイスチャンネル「%s」から退出したゾ！", user.Username, channel.Name)
+			s.ChannelMessageSend(channelId, str)
 		}
 	}
 }
